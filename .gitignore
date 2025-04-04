@@ -1,0 +1,23 @@
+# Maven
+/target/
+**/target/
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+*.iml
+.idea/
+.qodo/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Build output
+/out/
