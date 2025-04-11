@@ -1,0 +1,82 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: false
+      routes:
+        - id: auth-service
+          uri: http://localhost:9001
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=0
+        - id: user-service
+          uri: http://localhost:9002
+          predicates:
+            - Path=/users/**
+          filters:
+            - StripPrefix=0
+        - id: course-service
+          uri: http://localhost:9003
+          predicates:
+            - Path=/courses/**
+          filters:
+            - StripPrefix=0
+        - id: enrollment-service
+          uri: http://localhost:9004
+          predicates:
+            - Path=/enrollments/**
+          filters:
+            - StripPrefix=0
+        - id: assessment-service
+          uri: http://localhost:9005
+          predicates:
+            - Path=/assessments/**
+          filters:
+            - StripPrefix=0
+        - id: submission-service
+          uri: http://localhost:9006
+          predicates:
+            - Path=/submissions/**
+          filters:
+            - StripPrefix=0
+        - id: grading-service
+          uri: http://localhost:9007
+          predicates:
+            - Path=/grading/**
+          filters:
+            - StripPrefix=0
+        - id: analytics-service
+          uri: http://localhost:9008
+          predicates:
+            - Path=/analytics/**
+          filters:
+            - StripPrefix=0
+        - id: realtime-service-ws
+          uri: ws://localhost:9009
+          predicates:
+            - Path=/ws/**
+          filters:
+            - StripPrefix=0
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
