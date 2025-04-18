@@ -1,0 +1,10 @@
+server:
+  port: 9002
+spring:
+  application:
+    name: user-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

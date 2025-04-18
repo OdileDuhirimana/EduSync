@@ -1,0 +1,10 @@
+server:
+  port: 9003
+spring:
+  application:
+    name: course-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

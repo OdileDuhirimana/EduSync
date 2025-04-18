@@ -1,0 +1,10 @@
+server:
+  port: 9005
+spring:
+  application:
+    name: assessment-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
