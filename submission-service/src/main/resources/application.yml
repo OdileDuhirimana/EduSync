@@ -1,0 +1,10 @@
+server:
+  port: 9006
+spring:
+  application:
+    name: submission-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,10 @@
+server:
+  port: 9007
+spring:
+  application:
+    name: grading-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

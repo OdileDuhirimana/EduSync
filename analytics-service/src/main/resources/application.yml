@@ -1,0 +1,10 @@
+server:
+  port: 9008
+spring:
+  application:
+    name: analytics-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
