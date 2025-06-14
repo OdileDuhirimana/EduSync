@@ -32,6 +32,33 @@ This repository contains a minimal scaffold of the EduSync LMS Backend, derived 
 mvn -q -DskipTests=false clean verify
 ```
 
+## Deploy on Render
+This repository is prepared for Render Blueprints:
+- `render.yaml` defines 10 Docker-based services (gateway + all backend services).
+- Each service has a module-specific Dockerfile.
+- All apps listen on `PORT` (Render-compatible).
+- Gateway routes are environment-driven and wired through Render service discovery.
+
+Steps:
+1. Push this repo to GitHub.
+2. In Render, create a **Blueprint** and select this repository.
+3. Render will detect `render.yaml` and provision all services.
+4. Use the public URL of `edusync-gateway` as the single entrypoint.
+
+After deploy, validate:
+```bash
+GATEWAY=https://<edusync-gateway>.onrender.com
+curl -s $GATEWAY/actuator/health | jq .
+curl -s $GATEWAY/auth/health | jq .
+curl -s $GATEWAY/users/health | jq .
+curl -s $GATEWAY/courses/health | jq .
+```
+
+Render env notes:
+- `AUTH_JWT_SECRET` is auto-generated in `render.yaml`.
+- `AUTH_JWT_ACCESS_TTL_SECONDS` defaults to `900`.
+- Gateway routing vars (`*_SERVICE_HOSTPORT`) are auto-wired from service discovery in `render.yaml`.
+
 ## Portfolio Feature Samples
 ```
 GATEWAY=http://localhost:8080

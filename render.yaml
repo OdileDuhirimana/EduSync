@@ -1,0 +1,121 @@
+services:
+  - type: web
+    name: edusync-auth
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./auth-service/Dockerfile
+    healthCheckPath: /auth/health
+    envVars:
+      - key: AUTH_JWT_SECRET
+        generateValue: true
+      - key: AUTH_JWT_ACCESS_TTL_SECONDS
+        value: "900"
+
+  - type: web
+    name: edusync-user
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./user-service/Dockerfile
+    healthCheckPath: /users/health
+
+  - type: web
+    name: edusync-course
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./course-service/Dockerfile
+    healthCheckPath: /courses/health
+
+  - type: web
+    name: edusync-enrollment
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./enrollment-service/Dockerfile
+    healthCheckPath: /enrollments/health
+
+  - type: web
+    name: edusync-assessment
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./assessment-service/Dockerfile
+    healthCheckPath: /assessments/health
+
+  - type: web
+    name: edusync-submission
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./submission-service/Dockerfile
+    healthCheckPath: /submissions/health
+
+  - type: web
+    name: edusync-grading
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./grading-service/Dockerfile
+    healthCheckPath: /grading/health
+
+  - type: web
+    name: edusync-analytics
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./analytics-service/Dockerfile
+    healthCheckPath: /analytics/health
+
+  - type: web
+    name: edusync-realtime
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./realtime-service/Dockerfile
+    healthCheckPath: /actuator/health
+
+  - type: web
+    name: edusync-gateway
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./api-gateway/Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: AUTH_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-auth
+          property: hostport
+      - key: USER_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-user
+          property: hostport
+      - key: COURSE_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-course
+          property: hostport
+      - key: ENROLLMENT_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-enrollment
+          property: hostport
+      - key: ASSESSMENT_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-assessment
+          property: hostport
+      - key: SUBMISSION_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-submission
+          property: hostport
+      - key: GRADING_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-grading
+          property: hostport
+      - key: ANALYTICS_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-analytics
+          property: hostport
+      - key: REALTIME_SERVICE_HOSTPORT
+        fromService:
+          type: web
+          name: edusync-realtime
+          property: hostport

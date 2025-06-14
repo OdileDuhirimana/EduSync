@@ -1,5 +1,5 @@
 server:
-  port: 9007
+  port: ${PORT:9007}
 spring:
   application:
     name: grading-service

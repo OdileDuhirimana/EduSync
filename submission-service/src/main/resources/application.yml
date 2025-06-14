@@ -1,5 +1,5 @@
 server:
-  port: 9006
+  port: ${PORT:9006}
 spring:
   application:
     name: submission-service

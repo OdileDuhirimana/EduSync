@@ -1,5 +1,5 @@
 server:
-  port: 9004
+  port: ${PORT:9004}
 spring:
   application:
     name: enrollment-service

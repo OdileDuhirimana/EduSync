@@ -1,0 +1,10 @@
+.git
+.gitignore
+.idea
+.qodo
+**/target
+**/*.log
+README.md
+project.md
+infra
+scripts
