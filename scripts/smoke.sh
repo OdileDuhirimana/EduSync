@@ -15,6 +15,7 @@ PASSWORD=${PASSWORD:-P@ssw0rd!}
 USER_ID=${USER_ID:-u-1}
 
 JQ=$(command -v jq || true)
+EXTRA_HEADERS=()
 
 say() { echo -e "\n[smoke] $*"; }
 
@@ -22,19 +23,19 @@ call() {
   local method=$1
   local path=$2
   local data=${3:-}
-  if [[ -n "$data" ]]; then
-    curl -sS --fail -X "$method" "$GATEWAY_URL$path" \
-      -H "Content-Type: application/json" \
-      -H "X-Tenant-Id: $TENANT" \
-      ${AUTH_HEADER:+-H "Authorization: Bearer $AUTH_HEADER"} \
-      ${EXTRA_HEADERS:+$EXTRA_HEADERS} \
-      -d "$data"
-  else
-    curl -sS --fail -X "$method" "$GATEWAY_URL$path" \
-      -H "X-Tenant-Id: $TENANT" \
-      ${AUTH_HEADER:+-H "Authorization: Bearer $AUTH_HEADER"} \
-      ${EXTRA_HEADERS:+$EXTRA_HEADERS}
+  local cmd=(curl -sS --fail -X "$method" "$GATEWAY_URL$path" -H "X-Tenant-Id: $TENANT")
+
+  if [[ -n "${AUTH_HEADER:-}" ]]; then
+    cmd+=(-H "Authorization: Bearer $AUTH_HEADER")
   fi
+  for h in "${EXTRA_HEADERS[@]}"; do
+    cmd+=(-H "$h")
+  done
+
+  if [[ -n "$data" ]]; then
+    cmd+=(-H "Content-Type: application/json" -d "$data")
+  fi
+  "${cmd[@]}"
 }
 
 pp() {
@@ -54,7 +55,7 @@ say "Register user (idempotent)"
 call POST /auth/register '{"email":"'"$EMAIL"'","password":"'"$PASSWORD"'","firstName":"Alice","lastName":"Ngabo"}' | pp || true
 
 say "Login to get tokens"
-TOKENS=$(call POST /auth/login '{"email":"'"$EMAIL"'","password":"'"$PASSWORD""}')
+TOKENS=$(call POST /auth/login '{"email":"'"$EMAIL"'","password":"'"$PASSWORD"'"}')
 echo "$TOKENS" | pp
 if [[ -n "$JQ" ]]; then
   ACCESS=$(echo "$TOKENS" | jq -r .accessToken)
@@ -68,12 +69,12 @@ fi
 AUTH_HEADER="$ACCESS"
 
 say "/users/me (via headers stub)"
-EXTRA_HEADERS='-H "X-User-Id: '"$USER_ID"'" -H "X-User-Email: '"$EMAIL"'"'
+EXTRA_HEADERS=("X-User-Id: $USER_ID" "X-User-Email: $EMAIL")
 call GET /users/me | pp
-EXTRA_HEADERS=""
+EXTRA_HEADERS=()
 
 say "Create course (requires X-User-Roles: INSTRUCTOR)"
-EXTRA_HEADERS='-H "X-User-Roles: INSTRUCTOR"'
+EXTRA_HEADERS=("X-User-Roles: INSTRUCTOR")
 CREATE=$(call POST /courses '{"code":"ALG101","title":"Algorithms 101"}')
 echo "$CREATE" | pp
 if [[ -n "$JQ" ]]; then
@@ -90,12 +91,12 @@ say "Publish course"
 call POST "/courses/$COURSE_ID/publish" | pp
 
 say "Enroll self into the course"
-EXTRA_HEADERS='-H "X-User-Id: '"$USER_ID"'"'
+EXTRA_HEADERS=("X-User-Id: $USER_ID")
 ENR=$(call POST /enrollments '{"courseId":"'"$COURSE_ID"'"}')
 echo "$ENR" | pp
 
 say "List my enrollments"
 call GET /enrollments/me | pp
-EXTRA_HEADERS=""
+EXTRA_HEADERS=()
 
 say "All basic smoke steps completed successfully."
