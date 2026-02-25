@@ -2,6 +2,7 @@ services:
   - type: web
     name: edusync-auth
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./auth-service/Dockerfile
     healthCheckPath: /auth/health
@@ -14,6 +15,7 @@ services:
   - type: web
     name: edusync-user
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./user-service/Dockerfile
     healthCheckPath: /users/health
@@ -21,6 +23,7 @@ services:
   - type: web
     name: edusync-course
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./course-service/Dockerfile
     healthCheckPath: /courses/health
@@ -28,6 +31,7 @@ services:
   - type: web
     name: edusync-enrollment
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./enrollment-service/Dockerfile
     healthCheckPath: /enrollments/health
@@ -35,6 +39,7 @@ services:
   - type: web
     name: edusync-assessment
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./assessment-service/Dockerfile
     healthCheckPath: /assessments/health
@@ -42,6 +47,7 @@ services:
   - type: web
     name: edusync-submission
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./submission-service/Dockerfile
     healthCheckPath: /submissions/health
@@ -49,6 +55,7 @@ services:
   - type: web
     name: edusync-grading
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./grading-service/Dockerfile
     healthCheckPath: /grading/health
@@ -56,6 +63,7 @@ services:
   - type: web
     name: edusync-analytics
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./analytics-service/Dockerfile
     healthCheckPath: /analytics/health
@@ -63,6 +71,7 @@ services:
   - type: web
     name: edusync-realtime
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./realtime-service/Dockerfile
     healthCheckPath: /actuator/health
@@ -70,6 +79,7 @@ services:
   - type: web
     name: edusync-gateway
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./api-gateway/Dockerfile
     healthCheckPath: /actuator/health
