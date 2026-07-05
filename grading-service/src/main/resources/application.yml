@@ -3,6 +3,31 @@ server:
 spring:
   application:
     name: grading-service
+  # WHY a file-based H2 database rather than in-memory (`mem:`) for the
+  # default/dev profile: an in-memory DB would still lose all data on every
+  # restart, which is exactly the SEC-01/DB-01 defect this migration fixes.
+  # `./data/grading-service` persists to disk between restarts locally. The
+  # test profile below overrides this back to an isolated in-memory instance
+  # per test run, which is the correct behavior for tests.
+  datasource:
+    url: ${GRADING_DB_URL:jdbc:h2:file:./data/grading-service;AUTO_SERVER=TRUE}
+    driver-class-name: org.h2.Driver
+    username: ${GRADING_DB_USER:sa}
+    password: ${GRADING_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # WHY "validate" and not "update"/"create": the schema is owned by
+      # Flyway migrations (see db/migration/V1__create_grading_tables.sql).
+      # Hibernate is only allowed to confirm the entity mapping matches the
+      # migrated schema, never to mutate it — this prevents silent, undocumented
+      # schema drift in any environment.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
 management:
   endpoints:
     web:
