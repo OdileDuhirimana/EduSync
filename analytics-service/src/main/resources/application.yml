@@ -3,6 +3,31 @@ server:
 spring:
   application:
     name: analytics-service
+  # WHY a file-based H2 database rather than in-memory (`mem:`) for the
+  # default/dev profile: matches course-service/enrollment-service — an
+  # in-memory DB would lose all data on every restart, which is exactly the
+  # class of defect this migration fixes for the previously-mocked
+  # engagement/grade/funnel endpoints. `./data/analytics-service` persists to
+  # disk between restarts locally. The test profile (src/test/resources)
+  # overrides this back to an isolated in-memory instance per test run.
+  datasource:
+    url: ${ANALYTICS_DB_URL:jdbc:h2:file:./data/analytics-service;AUTO_SERVER=TRUE}
+    driver-class-name: org.h2.Driver
+    username: ${ANALYTICS_DB_USER:sa}
+    password: ${ANALYTICS_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # WHY "validate" and not "update"/"create": the schema is owned by
+      # Flyway migrations (see db/migration/V1__create_analytics_events_tables.sql).
+      # Hibernate is only allowed to confirm the entity mapping matches the
+      # migrated schema, never to mutate it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
 management:
   endpoints:
     web:

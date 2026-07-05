@@ -3,6 +3,34 @@ server:
 spring:
   application:
     name: user-service
+  # WHY H2 file-mode instead of the Mongo config this file used to carry:
+  # the spring-boot-starter-data-mongodb dependency in pom.xml was never
+  # wired to anything (no @Document, no MongoRepository, no Mongo client
+  # config) and has been removed. This mirrors course-service/
+  # enrollment-service exactly: H2 + JPA + Flyway needs zero external
+  # infrastructure to run `mvn test` or `mvn spring-boot:run`, unlike a real
+  # MongoDB instance, while still exercising a real relational schema via
+  # Flyway migrations (see db/migration/V1__create_user_profiles_table.sql)
+  # instead of an in-memory Map. `./data/user-service` persists to disk
+  # between local restarts; the test profile (src/test/resources/
+  # application.yml) overrides this to an isolated in-memory instance.
+  datasource:
+    url: ${USER_DB_URL:jdbc:h2:file:./data/user-service;AUTO_SERVER=TRUE}
+    driver-class-name: org.h2.Driver
+    username: ${USER_DB_USER:sa}
+    password: ${USER_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # WHY "validate" and not "update"/"create": the schema is owned by the
+      # Flyway migration; Hibernate is only allowed to confirm the entity
+      # mapping matches the migrated schema, never to mutate it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
 management:
   endpoints:
     web:

@@ -12,6 +12,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.edusync</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -25,7 +30,31 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <!-- WHY H2 file-mode instead of the previously-declared
+                 spring-boot-starter-data-mongodb (removed above): that Mongo
+                 dependency was dead weight — no @Document, no Mongo
+                 repository, no Mongo configuration existed anywhere in this
+                 module, so nothing was actually persisted through it. Every
+                 other remediated service in this monorepo (course-service,
+                 enrollment-service) standardized on H2 + JPA + Flyway
+                 specifically because it requires zero external infrastructure
+                 to run `mvn test` or `mvn spring-boot:run` — no Mongo daemon,
+                 no Docker container, nothing to install locally or in CI —
+                 while still exercising a real relational database, real SQL,
+                 real Flyway migrations, and real JPA mappings. Matching that
+                 pattern here keeps the whole monorepo's persistence story
+                 consistent instead of introducing a second, actually-wired
+                 storage technology for a single service. -->
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
