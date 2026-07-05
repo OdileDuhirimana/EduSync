@@ -1,0 +1,8 @@
+# Test-only configuration. This secret is intentionally obvious/non-random —
+# it is never used outside the test JVM and exists solely so `mvn test` does
+# not require a real AUTH_JWT_SECRET to be exported (see JwtService, which
+# now fails fast at startup if the property is missing in real environments).
+auth:
+  jwt:
+    secret: test-only-secret-do-not-use-in-any-real-environment-32bytes
+    accessTtlSeconds: 900
