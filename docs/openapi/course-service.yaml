@@ -1,0 +1,230 @@
+openapi: 3.0.1
+info:
+  title: EduSync Course Service
+  description: "Course catalog: creation, publishing, and paginated listing."
+  version: 0.1.0
+servers:
+- url: http://localhost:9003
+  description: Generated server url
+paths:
+  /courses:
+    get:
+      tags:
+      - course-controller
+      operationId: list
+      parameters:
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseCourseResponseDto"
+    post:
+      tags:
+      - course-controller
+      operationId: create
+      description: >-
+        Creates a course owned by the calling instructor. Requires the
+        INSTRUCTOR or ADMIN role (X-User-Roles). The course's instructorId is
+        always set from the gateway-verified X-User-Id header, never from
+        request body content.
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseRequestDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CourseResponseDto"
+  /courses/{id}/publish:
+    post:
+      tags:
+      - course-controller
+      operationId: publish
+      description: >-
+        Transitions a course from DRAFT to PUBLISHED. Requires INSTRUCTOR or
+        ADMIN role, AND (for INSTRUCTOR callers) ownership of the course —
+        only the instructor who created it, or any ADMIN, may publish it.
+        Returns 403 FORBIDDEN for a non-owning instructor.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CourseResponseDto"
+        "403":
+          description: Forbidden (missing role, or an instructor who does not own this course)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /courses/{id}:
+    get:
+      tags:
+      - course-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CourseResponseDto"
+  /courses/health:
+    get:
+      tags:
+      - course-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+components:
+  schemas:
+    CreateCourseRequestDto:
+      required:
+      - code
+      - title
+      type: object
+      properties:
+        code:
+          maxLength: 64
+          minLength: 0
+          pattern: "^[A-Za-z0-9._-]+$"
+          type: string
+        title:
+          maxLength: 200
+          minLength: 0
+          type: string
+    CourseResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        title:
+          type: string
+        instructorId:
+          type: string
+          description: >-
+            The verified X-User-Id of the instructor who created this course
+            (see SEC-04 remediation). Never client-settable.
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+          format: int32
+        path:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    Pageable:
+      type: object
+      properties:
+        page:
+          minimum: 0
+          type: integer
+          format: int32
+        size:
+          minimum: 1
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            type: string
+    PageResponseCourseResponseDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseResponseDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        hasNext:
+          type: boolean

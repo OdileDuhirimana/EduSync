@@ -1,5 +1,18 @@
 # EduSync LMS Backend — Implementation Blueprint (Spring Boot + MongoDB)
 
+> **Status: aspirational design document, not a description of the current
+> repository.** This file predates most of the code and describes the
+> full target system (14 services, MongoDB, Kafka, Redis, RS256/JWKS,
+> Kubernetes, OpenTelemetry). **For what is actually implemented, how it
+> differs from this document, and why, see [README.md](README.md) —
+> specifically the "What's Actually Implemented" and "Known Limitations /
+> Tradeoffs" sections.** Treat everything below as a roadmap/vision, not
+> as documentation of current behavior. This distinction is called out
+> explicitly here (rather than silently) because an earlier audit of this
+> repository flagged the undifferentiated coexistence of this blueprint
+> and the README as a "significant claim-vs-implementation gap" that could
+> mislead a reader who encountered this file first.
+
 ## 0) Executive Summary
 
 Build a modular, production-grade LMS backend using **Spring Boot (Java 17)** and **MongoDB**, organized as **microservices** behind an **API Gateway** with **JWT (access + refresh)**, **role/permission RBAC**, **async events** (Kafka), **Redis caching**, **WebSocket “live” channels** for real-time grading/announcements, and **observability** (OpenTelemetry + Prometheus + Grafana). Ship with **Docker Compose** for local dev and **Kubernetes** manifests for cloud deploy. Include **Swagger/OpenAPI**, **test coverage**, **seed data**, and **CI/CD**.

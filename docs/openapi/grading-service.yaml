@@ -1,0 +1,459 @@
+openapi: 3.0.1
+info:
+  title: EduSync Grading Service
+  description: >-
+    Auto/manual grading, gradebook, and the regrade moderation workflow.
+    Grading and publishing require an INSTRUCTOR or ADMIN caller
+    (X-User-Roles, injected by the gateway from a verified JWT). Regrade
+    requests may be made by any authenticated caller (including the
+    submission's own student); regrade decisions require INSTRUCTOR/ADMIN.
+  version: 0.1.0
+servers:
+- url: http://localhost:9007
+  description: Generated server url
+paths:
+  /grading/health:
+    get:
+      tags:
+      - grading-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /grading/auto/{submissionId}:
+    post:
+      tags:
+      - grading-controller
+      summary: Auto-grade a submission against an inline answer key
+      description: >-
+        Computes a deterministic, exact-match weighted-rubric score: each
+        answer-key entry's points are awarded in full if the submitted answer
+        for that questionId matches (case-insensitive, trimmed), otherwise
+        zero. Requires the INSTRUCTOR or ADMIN role.
+      operationId: autoGrade
+      parameters:
+      - name: submissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Comma-separated roles injected by the gateway. Must include INSTRUCTOR or ADMIN.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoGradeRequestDto"
+        required: true
+      responses:
+        "200":
+          description: The submission's grade after auto-grading.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeResponseDto"
+        "400":
+          description: Validation error, or the answer key's total possible points is zero (ANSWER_KEY_HAS_NO_POINTS).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Caller lacks the INSTRUCTOR/ADMIN role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /grading/manual/{submissionId}:
+    post:
+      tags:
+      - grading-controller
+      summary: Manually grade a submission from an instructor-supplied breakdown
+      description: The total is the sum of the breakdown values. Requires the INSTRUCTOR or ADMIN role.
+      operationId: manualGrade
+      parameters:
+      - name: submissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualGradeRequestDto"
+        required: true
+      responses:
+        "200":
+          description: The submission's grade after manual grading.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeResponseDto"
+        "400":
+          description: Validation error (e.g. empty breakdown).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Caller lacks the INSTRUCTOR/ADMIN role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /grading/{submissionId}/publish:
+    post:
+      tags:
+      - grading-controller
+      summary: Confirm and return a submission's current grade
+      description: >-
+        Requires that the submission already has a grade (from /auto or
+        /manual). Requires the INSTRUCTOR or ADMIN role. This pass does not
+        persist a separate "published" flag/timestamp — see the service
+        README's Known Limitations for this documented scope decision.
+      operationId: publish
+      parameters:
+      - name: submissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: The submission's current grade.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeResponseDto"
+        "403":
+          description: Caller lacks the INSTRUCTOR/ADMIN role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: No grade exists yet for this submission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /grading/regrade/{submissionId}/request:
+    post:
+      tags:
+      - grading-controller
+      summary: Request a regrade of a submission
+      description: >-
+        Any authenticated caller may request a regrade of a submission that
+        already has a grade — the requester's identity is taken from the
+        required X-User-Id header, not a client-supplied body field.
+      operationId: requestRegrade
+      parameters:
+      - name: submissionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegradeRequestDto"
+        required: true
+      responses:
+        "201":
+          description: The newly created, PENDING regrade case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegradeResponseDto"
+        "400":
+          description: Validation error, or X-User-Id header missing (MISSING_HEADER).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: No grade exists yet for this submission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /grading/regrade/{requestId}/decision:
+    post:
+      tags:
+      - grading-controller
+      summary: Approve or reject a pending regrade case
+      description: >-
+        Requires the INSTRUCTOR or ADMIN role. The moderator's identity is
+        taken from the required X-User-Id header, not a client-supplied body
+        field. Deciding an already-decided case returns 409 (ALREADY_DECIDED);
+        an unrecognized decision value returns 400 (INVALID_DECISION).
+      operationId: decideRegrade
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegradeDecisionRequestDto"
+        required: true
+      responses:
+        "200":
+          description: The decided regrade case, including the current grade.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegradeResponseDto"
+        "400":
+          description: Validation error, or an unrecognized decision value (INVALID_DECISION).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Caller lacks the INSTRUCTOR/ADMIN role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Regrade case not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: The regrade case has already been decided (ALREADY_DECIDED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /grading/regrade/{requestId}:
+    get:
+      tags:
+      - grading-controller
+      summary: Fetch a regrade case and its associated current grade
+      operationId: getRegrade
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegradeResponseDto"
+        "404":
+          description: Regrade case not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    AnswerDto:
+      type: object
+      required:
+      - questionId
+      properties:
+        questionId:
+          type: string
+        response:
+          type: string
+          description: The submitted answer text. May be blank/omitted to represent "not answered," which scores 0.
+    AnswerKeyEntryDto:
+      type: object
+      required:
+      - questionId
+      - correctAnswer
+      - points
+      properties:
+        questionId:
+          type: string
+        correctAnswer:
+          type: string
+        points:
+          type: integer
+          format: int32
+          minimum: 1
+    AutoGradeRequestDto:
+      type: object
+      required:
+      - answers
+      - answerKey
+      properties:
+        answers:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AnswerDto"
+        answerKey:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AnswerKeyEntryDto"
+    ManualGradeRequestDto:
+      type: object
+      required:
+      - breakdown
+      properties:
+        breakdown:
+          type: object
+          description: Non-empty map of questionId -> points awarded. The grade total is the sum of these values.
+          additionalProperties:
+            type: integer
+            format: int32
+        feedback:
+          type: string
+    RegradeRequestDto:
+      type: object
+      required:
+      - reason
+      properties:
+        reason:
+          type: string
+    RegradeDecisionRequestDto:
+      type: object
+      required:
+      - decision
+      properties:
+        decision:
+          type: string
+          description: Case-insensitive; must be APPROVE or REJECT.
+        note:
+          type: string
+        overrideTotal:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+          description: Only applied when decision is APPROVE and this is present.
+    GradeResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+        submissionId:
+          type: string
+        breakdown:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        total:
+          type: integer
+          format: int32
+        feedback:
+          type: string
+        status:
+          type: string
+          enum: [GRADED, GRADED_OVERRIDDEN]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RegradeResponseDto:
+      type: object
+      properties:
+        requestId:
+          type: string
+        submissionId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        requestedBy:
+          type: string
+        reason:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+        decidedBy:
+          type: string
+          nullable: true
+        decisionNote:
+          type: string
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        overrideTotal:
+          type: integer
+          format: int32
+          nullable: true
+        currentGrade:
+          allOf:
+          - $ref: "#/components/schemas/GradeResponseDto"
+          nullable: true
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+          format: int32
+        path:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string

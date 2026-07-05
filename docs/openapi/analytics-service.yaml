@@ -1,0 +1,520 @@
+openapi: 3.0.1
+info:
+  title: EduSync Analytics Service
+  description: >
+    Real, persisted engagement/grade/funnel analytics (ingest-then-aggregate),
+    plus study-plan generation, at-risk learner scoring, and grade
+    forecasting.
+  version: 0.1.0
+servers:
+- url: http://localhost:9008
+  description: Generated server url
+paths:
+  /analytics/health:
+    get:
+      tags:
+      - analytics-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /analytics/events/engagement:
+    post:
+      tags:
+      - analytics-controller
+      operationId: recordEngagementEvent
+      description: Requires the caller to hold INSTRUCTOR or ADMIN (via X-User-Roles).
+      parameters:
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordEngagementEventRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionAck"
+        "400":
+          description: Validation error (missing/blank courseId or userId, missing eventType)
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/events/grade:
+    post:
+      tags:
+      - analytics-controller
+      operationId: recordGradeSnapshot
+      description: Requires the caller to hold INSTRUCTOR or ADMIN (via X-User-Roles).
+      parameters:
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordGradeSnapshotRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionAck"
+        "400":
+          description: Validation error
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/events/funnel:
+    post:
+      tags:
+      - analytics-controller
+      operationId: recordFunnelEvent
+      description: Requires the caller to hold INSTRUCTOR or ADMIN (via X-User-Roles).
+      parameters:
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordFunnelEventRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionAck"
+        "400":
+          description: Validation error
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/engagement:
+    get:
+      tags:
+      - analytics-controller
+      operationId: engagement
+      description: >
+        Real aggregate computed from persisted engagement/funnel events:
+        distinct active-session users in the last 24h (dau), and
+        COMPLETE/VIEW funnel event ratio (completionRate). Requires
+        INSTRUCTOR or ADMIN.
+      parameters:
+      - name: courseId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngagementResponse"
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/grade-distribution:
+    get:
+      tags:
+      - analytics-controller
+      operationId: gradeDistribution
+      description: >
+        Real per-letter-grade counts computed from persisted grade
+        snapshots. Requires INSTRUCTOR or ADMIN.
+      parameters:
+      - name: courseId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeDistributionResponse"
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/funnels:
+    get:
+      tags:
+      - analytics-controller
+      operationId: funnels
+      description: >
+        Real per-stage counts computed from persisted funnel events.
+        Requires INSTRUCTOR or ADMIN.
+      parameters:
+      - name: courseId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelsResponse"
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/study-plan:
+    post:
+      tags:
+      - analytics-controller
+      operationId: studyPlan
+      description: >
+        Student self-service: requires only a valid, non-blank X-User-Id
+        header (no specific role).
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyPlanRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Validation error (non-positive weeklyHours/horizonDays, or an empty modules list)
+
+  /analytics/at-risk:
+    post:
+      tags:
+      - analytics-controller
+      operationId: atRisk
+      description: >
+        Scores a batch of other learners' signals (cross-student data) —
+        requires INSTRUCTOR or ADMIN, not student self-service.
+      parameters:
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtRiskRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Validation error (empty learners list, or a rate-style field out of range)
+        "403":
+          description: Caller is not INSTRUCTOR or ADMIN
+
+  /analytics/grade-forecast:
+    post:
+      tags:
+      - analytics-controller
+      operationId: gradeForecast
+      description: >
+        Student self-service: requires only a valid, non-blank X-User-Id
+        header (no specific role).
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeForecastRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Validation error (targetFinalGrade/weightPct/scorePct out of the 0-100 range)
+
+components:
+  schemas:
+    EngagementEventType:
+      type: string
+      enum: [VIEW, ACTIVE_SESSION]
+    LetterGrade:
+      type: string
+      enum: [A, B, C, D, F]
+    FunnelStage:
+      type: string
+      enum: [VIEW, ENROLL, COMPLETE]
+
+    RecordEngagementEventRequest:
+      type: object
+      required: [courseId, userId, eventType]
+      properties:
+        courseId:
+          type: string
+        userId:
+          type: string
+        eventType:
+          $ref: "#/components/schemas/EngagementEventType"
+
+    RecordGradeSnapshotRequest:
+      type: object
+      required: [courseId, userId, letterGrade]
+      properties:
+        courseId:
+          type: string
+        userId:
+          type: string
+        letterGrade:
+          $ref: "#/components/schemas/LetterGrade"
+
+    RecordFunnelEventRequest:
+      type: object
+      required: [courseId, stage]
+      properties:
+        courseId:
+          type: string
+        stage:
+          $ref: "#/components/schemas/FunnelStage"
+
+    IngestionAck:
+      type: object
+      properties:
+        id:
+          type: string
+        recorded:
+          type: boolean
+
+    EngagementResponse:
+      type: object
+      properties:
+        courseId:
+          type: string
+        dau:
+          type: integer
+          format: int64
+          description: Distinct users with an ACTIVE_SESSION event in the last 24 hours.
+        completionRate:
+          type: number
+          format: double
+          description: COMPLETE / VIEW funnel event count for this course; 0.0 if there are no VIEW events yet.
+
+    GradeDistributionResponse:
+      type: object
+      properties:
+        courseId:
+          type: string
+        bins:
+          type: array
+          items:
+            type: object
+            properties:
+              grade:
+                $ref: "#/components/schemas/LetterGrade"
+              count:
+                type: integer
+                format: int64
+
+    FunnelsResponse:
+      type: object
+      properties:
+        courseId:
+          type: string
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              stage:
+                type: string
+                enum: [view, enroll, complete]
+              count:
+                type: integer
+                format: int64
+
+    StudyModule:
+      type: object
+      properties:
+        moduleId:
+          type: string
+        title:
+          type: string
+        estimatedMinutes:
+          type: integer
+          format: int32
+        difficulty:
+          type: integer
+          format: int32
+        dueDate:
+          type: string
+
+    StudyPlanRequest:
+      type: object
+      required: [modules]
+      properties:
+        learnerId:
+          type: string
+        weeklyHours:
+          type: integer
+          format: int32
+          minimum: 1
+          exclusiveMinimum: false
+          description: Optional; defaults to 8 when absent. Must be positive if provided.
+        horizonDays:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Optional; defaults to 14 when absent. Must be positive if provided.
+        modules:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/StudyModule"
+
+    CompletedGrade:
+      type: object
+      properties:
+        name:
+          type: string
+        weightPct:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        scorePct:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+
+    RemainingGrade:
+      type: object
+      properties:
+        name:
+          type: string
+        weightPct:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+
+    GradeForecastRequest:
+      type: object
+      properties:
+        learnerId:
+          type: string
+        courseId:
+          type: string
+        completed:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompletedGrade"
+        remaining:
+          type: array
+          items:
+            $ref: "#/components/schemas/RemainingGrade"
+        targetFinalGrade:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+
+    AtRiskRequest:
+      type: object
+      required: [learners]
+      properties:
+        courseId:
+          type: string
+        learners:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/LearnerSignal"
+
+    LearnerSignal:
+      type: object
+      properties:
+        userId:
+          type: string
+        completionRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        averageScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        lastActiveDaysAgo:
+          type: integer
+          format: int32
+          minimum: 0
+        missedDeadlines:
+          type: integer
+          format: int32
+          minimum: 0

@@ -1,0 +1,228 @@
+openapi: 3.0.1
+info:
+  title: EduSync Enrollment Service
+  description: "Course enrollment, drop, and per-user enrollment history."
+  version: 0.1.0
+servers:
+- url: http://localhost:9004
+  description: Generated server url
+paths:
+  /enrollments:
+    post:
+      tags:
+      - enrollment-controller
+      operationId: create
+      description: >-
+        Enrolls a user in a course. A caller always enrolls themselves by
+        default; setting a different `userId` in the request body requires
+        the caller to hold INSTRUCTOR or ADMIN (403 otherwise — see SEC-04
+        remediation). Verifies via a real call to course-service that the
+        course exists and is PUBLISHED before enrolling (404 if the course
+        does not exist, 409 if it is not published, 503 if course-service is
+        unreachable).
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Tenant-Id
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnrollmentRequestDto"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "403":
+          description: Forbidden (non-privileged caller attempted to enroll a different user)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found (courseId does not exist in course-service)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Conflict (course exists but is not published, or a duplicate active enrollment)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Service Unavailable (course-service could not be reached)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /enrollments/me:
+    get:
+      tags:
+      - enrollment-controller
+      operationId: myEnrollments
+      parameters:
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-Tenant-Id
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: pageable
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseEnrollmentResponseDto"
+  /enrollments/health:
+    get:
+      tags:
+      - enrollment-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /enrollments/{id}:
+    delete:
+      tags:
+      - enrollment-controller
+      operationId: drop
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    CreateEnrollmentRequestDto:
+      required:
+      - courseId
+      type: object
+      properties:
+        courseId:
+          type: string
+        userId:
+          type: string
+    EnrollmentResponseDto:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        courseId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Pageable:
+      type: object
+      properties:
+        page:
+          minimum: 0
+          type: integer
+          format: int32
+        size:
+          minimum: 1
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            type: string
+    PageResponseEnrollmentResponseDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnrollmentResponseDto"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        hasNext:
+          type: boolean
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+          format: int32
+        path:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string

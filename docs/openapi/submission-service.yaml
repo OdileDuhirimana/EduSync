@@ -1,0 +1,232 @@
+openapi: 3.0.1
+info:
+  title: EduSync Submission Service
+  description: Student submission intake and Jaccard-similarity plagiarism detection.
+  version: 0.1.0
+servers:
+- url: http://localhost:9006
+  description: Generated server url
+paths:
+  /submissions:
+    post:
+      tags:
+      - submission-controller
+      operationId: create
+      parameters:
+      - name: X-User-Id
+        in: header
+        description: Identity header injected by the gateway. Required — any
+          authenticated caller may submit their own work.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubmissionRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+        "400":
+          description: Missing X-User-Id header, malformed body, or failed
+            validation (blank assessmentId / empty answers)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /submissions/{id}:
+    get:
+      tags:
+      - submission-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        description: Identity header injected by the gateway. Required, but
+          any authenticated role may read a submission (used by
+          grading-service and by the submission's owner).
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+        "400":
+          description: Missing X-User-Id header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Submission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /submissions/{id}/similarity:
+    get:
+      tags:
+      - submission-controller
+      operationId: similarity
+      description: Plagiarism-comparison report. Restricted to INSTRUCTOR/ADMIN —
+        a student must not be able to pull a classmate-comparison report.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-User-Id
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-User-Roles
+        in: header
+        description: Comma-separated roles injected by the gateway. Must
+          include INSTRUCTOR or ADMIN.
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimilarityResponse"
+        "400":
+          description: Missing X-User-Id header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Caller lacks the INSTRUCTOR/ADMIN role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Submission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /submissions/health:
+    get:
+      tags:
+      - submission-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+components:
+  schemas:
+    CreateSubmissionRequest:
+      required:
+      - assessmentId
+      - answers
+      type: object
+      properties:
+        assessmentId:
+          type: string
+        answers:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: true
+    SubmissionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        assessmentId:
+          type: string
+        userId:
+          type: string
+        answers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        status:
+          type: string
+          enum: [SUBMITTED]
+        createdAt:
+          type: string
+          format: date-time
+    SimilarityResponse:
+      type: object
+      properties:
+        submissionId:
+          type: string
+        assessmentId:
+          type: string
+        riskLevel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        maxSimilarity:
+          type: number
+          format: double
+        comparedSubmissions:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimilarityMatch"
+    SimilarityMatch:
+      type: object
+      properties:
+        submissionId:
+          type: string
+        userId:
+          type: string
+        similarityScore:
+          type: number
+          format: double
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        status:
+          type: integer
+        path:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
