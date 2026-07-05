@@ -1,0 +1,26 @@
+package com.edusync.course.repository;
+
+import com.edusync.course.domain.Course;
+import com.edusync.course.domain.CourseStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+/**
+ * WHY a repository interface exists at all: ARC-01/ARC-03/AR-03 in both
+ * audits flagged that no repository abstraction existed anywhere in the
+ * codebase — controllers held ConcurrentHashMap fields directly. Spring Data
+ * generates the implementation; CourseService depends on this interface
+ * (not a concrete Map), which is what makes CourseService unit-testable in
+ * isolation with a Mockito mock (see CourseServiceTest).
+ */
+public interface CourseRepository extends JpaRepository<Course, String> {
+
+    Optional<Course> findByCode(String code);
+
+    boolean existsByCode(String code);
+
+    Page<Course> findByStatus(CourseStatus status, Pageable pageable);
+}

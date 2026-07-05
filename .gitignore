@@ -21,3 +21,10 @@ logs/
 
 # Build output
 /out/
+
+# Local H2 file-based databases (course-service, enrollment-service run in
+# dev mode without Docker/Postgres — see README "Tradeoffs"). These are
+# developer-machine runtime state, never source, and must never be committed.
+**/data/*.mv.db
+**/data/*.trace.db
+*/data/
