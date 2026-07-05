@@ -3,6 +3,32 @@ server:
 spring:
   application:
     name: assessment-service
+  # WHY a file-based H2 database rather than in-memory (`mem:`) for the
+  # default/dev profile: matches course-service/enrollment-service — an
+  # in-memory DB would still lose all data on every restart, which is
+  # exactly the defect this migration fixes. `./data/assessment-service`
+  # persists to disk between restarts locally. The test profile overrides
+  # this back to an isolated in-memory instance per test run, which is the
+  # correct behavior for tests.
+  datasource:
+    url: ${ASSESSMENT_DB_URL:jdbc:h2:file:./data/assessment-service;AUTO_SERVER=TRUE}
+    driver-class-name: org.h2.Driver
+    username: ${ASSESSMENT_DB_USER:sa}
+    password: ${ASSESSMENT_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # WHY "validate" and not "update"/"create": the schema is owned by
+      # Flyway migrations (see db/migration/V1__create_assessments_table.sql).
+      # Hibernate is only allowed to confirm the entity mapping matches the
+      # migrated schema, never to mutate it — this prevents silent,
+      # undocumented schema drift in any environment.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
 management:
   endpoints:
     web:

@@ -1,0 +1,15 @@
+# Test-only datasource: a uniquely named in-memory H2 instance per JVM run
+# (random suffix avoids cross-test-class contamination when Spring Boot
+# caches/reuses application contexts). Flyway still runs against it, so
+# tests exercise the real migration path, not a Hibernate-generated schema.
+spring:
+  datasource:
+    url: jdbc:h2:mem:submission-service-test;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
