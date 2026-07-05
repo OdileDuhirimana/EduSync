@@ -75,6 +75,12 @@ services:
     dockerContext: .
     dockerfilePath: ./realtime-service/Dockerfile
     healthCheckPath: /actuator/health
+    envVars:
+      # WHY: locks down the STOMP/SockJS endpoint's CORS-equivalent origin
+      # check (see WebSocketConfig) to the real deployed front-end origin,
+      # replacing the previous `setAllowedOriginPatterns("*")` wildcard.
+      - key: REALTIME_CORS_ALLOWED_ORIGINS
+        value: "https://<edusync-frontend>.onrender.com"
 
   - type: web
     name: edusync-gateway
@@ -84,6 +90,19 @@ services:
     dockerfilePath: ./api-gateway/Dockerfile
     healthCheckPath: /actuator/health
     envVars:
+      # WHY the gateway needs this: JwtAuthenticationFilter verifies every
+      # request's access-token signature at the gateway, and must use the
+      # exact same HS256 secret auth-service used to sign it. Without this,
+      # the gateway would reject every request as unauthenticated in
+      # production (a deploy-breaking gap that would have shipped silently
+      # if not caught here — `fromService`/`envVarKey` tells Render to reuse
+      # edusync-auth's already-generated AUTH_JWT_SECRET rather than
+      # generating a second, different, incompatible value for this service).
+      - key: AUTH_JWT_SECRET
+        fromService:
+          type: web
+          name: edusync-auth
+          envVarKey: AUTH_JWT_SECRET
       - key: AUTH_SERVICE_HOSTPORT
         fromService:
           type: web
@@ -129,3 +148,31 @@ services:
           type: web
           name: edusync-realtime
           property: hostport
+      # WHY: backs the gateway's RequestRateLimiter filter (see
+      # api-gateway/application.yml) with the managed Redis instance defined
+      # below, instead of the docker-compose-only Redis container that was
+      # previously declared but never connected to anything (SEC-09/SCALE-01
+      # in the audits). `fromService`/`property: host|port` lets Render wire
+      # the actual private-network address of the `edusync-redis` instance
+      # without hardcoding it.
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: edusync-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: edusync-redis
+          property: port
+      # WHY a real value here instead of Render's own default localhost dev
+      # value: this is the one env var an operator MUST override per
+      # environment with the actual deployed front-end origin(s) before this
+      # is a real production CORS policy — see README "Known Limitations".
+      - key: CORS_ALLOWED_ORIGINS_LIST
+        value: "https://<edusync-frontend>.onrender.com"
+
+  - type: redis
+    name: edusync-redis
+    plan: free
+    ipAllowList: []

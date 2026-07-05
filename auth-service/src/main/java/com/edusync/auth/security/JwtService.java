@@ -23,9 +23,21 @@ public class JwtService {
     private final long accessTtlSeconds;
 
     public JwtService(
-            @Value("${auth.jwt.secret:changemechangemechangemechangeme}") String secretValue,
+            // WHY no default here (fixes Critical Issue #3 / SEC-04 from the
+            // code review: a hardcoded fallback secret "changemechangeme..."
+            // was previously committed to source control and used whenever
+            // AUTH_JWT_SECRET was unset). Requiring the property with no
+            // default makes Spring fail application startup immediately if
+            // the secret is missing, rather than silently signing tokens
+            // with a publicly known key. Set it locally with:
+            //   export AUTH_JWT_SECRET=$(openssl rand -base64 32)
+            @Value("${auth.jwt.secret}") String secretValue,
             @Value("${auth.jwt.accessTtlSeconds:900}") long accessTtlSeconds
     ) {
+        if (secretValue == null || secretValue.isBlank()) {
+            throw new IllegalStateException(
+                    "auth.jwt.secret (AUTH_JWT_SECRET) must be set; refusing to start with no signing key.");
+        }
         byte[] secretBytes;
         try {
             // Try base64 first
@@ -52,6 +64,10 @@ public class JwtService {
                 ))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public long getAccessTtlSeconds() {
+        return accessTtlSeconds;
     }
 
     private byte[] ensureMinKeyLength(byte[] candidate) {

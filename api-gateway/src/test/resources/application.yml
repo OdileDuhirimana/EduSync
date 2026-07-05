@@ -1,0 +1,8 @@
+# Test-only configuration — see auth-service/src/test/resources/application.yml
+# for rationale. Same fixed test secret so cross-service auth flow tests
+# (issuing a token in auth-service tests and verifying it in gateway tests)
+# could share a fixture value if ever wired together; each service's test
+# suite runs independently today.
+auth:
+  jwt:
+    secret: test-only-secret-do-not-use-in-any-real-environment-32bytes

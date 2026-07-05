@@ -1,6 +1,11 @@
 server:
   port: ${PORT:9001}
 
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET}
+    accessTtlSeconds: ${AUTH_JWT_ACCESS_TTL_SECONDS:900}
+
 spring:
   application:
     name: auth-service

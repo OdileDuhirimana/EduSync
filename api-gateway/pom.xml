@@ -12,12 +12,32 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.edusync</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <!-- WHY: backs the RequestRateLimiter gateway filter (see
+                 application.yml's "default-filters" and RateLimiterConfig) with
+                 a real, shared counter in Redis rather than an in-process one.
+                 An in-memory rate limiter would reset on every gateway restart
+                 and wouldn't work correctly if the gateway is ever scaled to
+                 more than one replica (each replica would enforce its own
+                 independent limit, defeating the point). This also finally
+                 wires the Redis container that docker-compose.yml has declared
+                 since the project's earliest scaffold but that no service ever
+                 connected to (closes SEC-09/SCALE-01 together, as suggested by
+                 the audit's "Fastest Path to 110+"). -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>

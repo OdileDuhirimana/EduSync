@@ -3,6 +3,12 @@ server:
 spring:
   application:
     name: realtime-service
+# WHY an explicit allow-list instead of "*": see WebSocketConfig's Javadoc.
+# Set this to the real deployed front-end origin(s) in each environment
+# (comma-separated, no spaces) via the REALTIME_CORS_ALLOWED_ORIGINS env var.
+realtime:
+  cors:
+    allowed-origins: ${REALTIME_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 management:
   endpoints:
     web:

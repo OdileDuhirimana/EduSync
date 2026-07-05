@@ -15,9 +15,49 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
         <dependency>
+            <!-- WHY optional: only the servlet-based (WebMVC) services use the
+                 GlobalExceptionHandler/ApiError classes in this module. The
+                 api-gateway is WebFlux/reactive and only consumes JwtVerifier
+                 and TrustedHeaders (no servlet API dependency). Marking this
+                 optional prevents spring-boot-starter-web (Tomcat) from being
+                 pulled transitively into the reactive gateway, which would
+                 conflict with its Netty-based WebApplicationType.REACTIVE
+                 autoconfiguration. Every WebMVC service already declares its
+                 own spring-boot-starter-web dependency directly. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

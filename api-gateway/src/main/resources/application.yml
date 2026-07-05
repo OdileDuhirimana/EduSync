@@ -1,6 +1,26 @@
 server:
   port: ${PORT:8080}
 
+# WHY no default value for AUTH_JWT_SECRET: a hardcoded fallback secret
+# committed to source control was Critical Issue #3 in the code review
+# (JwtService.java previously defaulted to "changemechangemechangemechangeme").
+# Requiring the env var with no default means the gateway refuses to start
+# rather than silently running with a guessable signing key. Set it locally
+# with: export AUTH_JWT_SECRET=$(openssl rand -base64 32)
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET}
+
+  data:
+    redis:
+      # WHY defaulting to localhost:6379 rather than requiring the env var:
+      # `infra/docker-compose.yml` already runs a `redis:7` container on the
+      # default port for local development, so an unset env var still "just
+      # works" for `docker compose up` + `mvn spring-boot:run`. Real
+      # deployments (Render, etc.) override both via env vars to point at a
+      # managed Redis instance.
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 spring:
   application:
     name: api-gateway
@@ -8,12 +28,37 @@ spring:
     web-application-type: reactive
   cloud:
     gateway:
+      # WHY a project-wide default filter instead of repeating it on every
+      # route: RequestRateLimiter closes SEC-09 (no rate limiting anywhere in
+      # the system, despite Redis being provisioned in docker-compose.yml
+      # since the earliest scaffold specifically "for future use" and never
+      # connected). replenishRate/burstCapacity are deliberately generous
+      # (10 req/s sustained, burst to 20) so normal interactive use and the
+      # existing test suites are never throttled — the goal at this stage is
+      # a real, working, keyed rate limiter wired end-to-end, not a
+      # precisely-tuned production limit (see README's Known Limitations for
+      # this documented tradeoff). requestedTokens=1 means each HTTP request
+      # consumes exactly one token.
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10
+            redis-rate-limiter.burstCapacity: 20
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@rateLimiterKeyResolver}"
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "*"
+            # WHY an explicit allow-list instead of "*" (item 12 of the
+            # remediation plan): a wildcard origin combined with any future
+            # cookie-based auth would be a CSRF-adjacent hole; the code review
+            # noted the *only* thing preventing that today was the accidental
+            # combination of allowCredentials:false with allowedOrigins:"*".
+            # Making the origin list explicit (and environment-configurable)
+            # closes the gap deliberately rather than by accident, without
+            # waiting for credentialed auth to actually be introduced.
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS_LIST:http://localhost:3000,http://localhost:5173}
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: false
